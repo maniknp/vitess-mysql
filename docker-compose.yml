@@ -1,0 +1,116 @@
+version: '3.7'
+
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd
+    ports:
+      - "2379:2379"
+    command: etcd --data-dir /etcd-data --advertise-client-urls http://0.0.0.0:2379 --listen-client-urls http://0.0.0.0:2379
+
+  mysqldb:
+    image: mysql:8.0
+    container_name: mysqldb
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_REPLICATION_USER: repluser
+      MYSQL_REPLICATION_PASSWORD: replpassword
+    volumes:
+      - mysqldb_data:/var/lib/mysql
+      - /var/lib/mysql:/var/lib/mysql
+    ports:
+      - "3307:3306"  # Avoid port conflict with your current MySQL
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --server-id=2
+      --log-bin=mysql-bin
+      --binlog-format=ROW
+      --gtid-mode=ON
+      --enforce-gtid-consistency=ON
+      --log-slave-updates=ON
+      --relay-log=relay-bin
+      --relay-log-index=relay-bin.index
+      --read-only=0
+    networks:
+      - vitess-network
+
+  vtctld:
+    image: vitess/vtctld:latest
+    container_name: vtctld
+    environment:
+      TOPO_IMPLEMENTATION: etcd2
+      TOPO_GLOBAL_SERVER_ADDRESS: etcd:2379
+      TOPO_GLOBAL_ROOT: /vitess/global
+    ports:
+      - "15000:15000"
+    entrypoint: [
+      "/vt/bin/vtctld",
+      "-topo_implementation", "etcd2",
+      "-topo_global_server_address", "etcd:2379",
+      "-topo_global_root", "/vitess/global",
+      "-logtostderr"
+    ]
+    networks:
+      - vitess-network
+
+  vttablet:
+    image: vitess/vttablet:latest
+    container_name: vttablet
+    environment:
+      TOPO_IMPLEMENTATION: etcd2
+      TOPO_GLOBAL_SERVER_ADDRESS: etcd:2379
+      TOPO_GLOBAL_ROOT: /vitess/global
+      DB_HOST: mysqldb
+      DB_PORT: 3306
+      DB_ALL_PRIVS_USER: root
+      DB_ALL_PRIVS_PASSWORD: rootpassword
+      DB_APP_USER: vt_app
+      DB_APP_PASSWORD: apppassword
+      INIT_DB_NAME_OVERRIDE: my_database
+      KEYSPACE: my_keyspace
+      SHARD: 0
+    ports:
+      - "15002:15002"
+    entrypoint: [
+      "/vt/bin/vttablet",
+      "-topo_implementation", "etcd2",
+      "-topo_global_server_address", "etcd:2379",
+      "-topo_global_root", "/vitess/global",
+      "-logtostderr",
+      "-tablet-path", "zone1-0000000100",
+      "-init_keyspace", "my_keyspace",
+      "-init_shard", "0",
+      "-init_tablet_type", "replica",
+      "-port", "15002"
+    ]
+    networks:
+      - vitess-network
+
+  vtgate:
+    image: vitess/vtgate:latest
+    container_name: vtgate
+    environment:
+      TOPO_IMPLEMENTATION: etcd2
+      TOPO_GLOBAL_SERVER_ADDRESS: etcd:2379
+      TOPO_GLOBAL_ROOT: /vitess/global
+    ports:
+      - "15001:15001"
+      - "15991:15991"
+    entrypoint: [
+      "/vt/bin/vtgate",
+      "-topo_implementation", "etcd2",
+      "-topo_global_server_address", "etcd:2379",
+      "-topo_global_root", "/vitess/global",
+      "-logtostderr",
+      "-port", "15001",
+      "-grpc_port", "15991",
+      "-mysql_server_port", "3306"
+    ]
+    networks:
+      - vitess-network
+
+networks:
+  vitess-network:
+
+volumes:
+  mysqldb_data:

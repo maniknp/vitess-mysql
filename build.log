@@ -1,0 +1,31 @@
+#0 building with "default" instance using docker driver
+
+#1 [wordpress internal] load build definition from Dockerfile
+#1 transferring dockerfile: 138B done
+#1 DONE 0.1s
+
+#2 [wordpress internal] load metadata for docker.io/library/ubuntu:22.04
+#2 ...
+
+#3 [wordpress auth] library/ubuntu:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 [wordpress internal] load metadata for docker.io/library/ubuntu:22.04
+#2 DONE 1.6s
+
+#4 [wordpress internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.1s
+
+#5 [wordpress 1/2] FROM docker.io/library/ubuntu:22.04@sha256:19478ce7fc2ffbce89df29fea5725a8d12e57de52eb9ea570890dc5852aac1ac
+#5 DONE 0.0s
+
+#6 [wordpress 2/2] RUN apt-get update && apt-get install -y mysql-server
+#6 CACHED
+
+#7 [wordpress] exporting to image
+#7 exporting layers done
+#7 writing image sha256:dfc132f34ebe5c8120f706a7c1235b80c480802d46fadbfe4e95939313db094d 0.0s done
+#7 naming to docker.io/library/wordpress-test-image:1.0 0.0s done
+#7 DONE 0.1s
+Attaching to wordpress-test-image-container
